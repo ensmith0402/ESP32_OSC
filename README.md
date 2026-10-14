@@ -1,100 +1,136 @@
-# ESP-Scope
+# ESP32_OSC — Веб-осциллограф на ESP32
 
-## Overview
-ESP-Scope is a web-based oscilloscope built using the ESP-IDF framework. It allows users to visualize analog signals in real-time through a web browser. The project leverages the ESP32's ADC capabilities and serves a web interface for signal visualization. It contains complete source code and 3D design for a case for the Seeed XIAO ESP32C6.
+Проект веб-осциллографа на базе ESP32 с открытым исходным кодом. Позволяет наблюдать электрические сигналы прямо в браузере через Wi-Fi.
 
-This project was written in part to test AI code generators and see if they're any good. Much of the code was written by Google Antigravity using Gemini 3, with refinements, hints and tips and overall design specified by a human. The whole app was up and running a few hours and finished, including 3D design in a weekend.
+## 📋 Возможности
 
-![esp-scope](screenshot.png)
+- **Веб-интерфейс** — график в браузере, без установки ПО.
+- **Wi-Fi точка доступа** — ESP32 создаёт свою сеть для подключения.
+- **Регулировка частоты дискретизации** — от 1 кГц до ~83 кГц.
+- **Триггер** — «заморозка» графика на заданном уровне.
+- **Аттенюация ADC** — 0 / 2.5 / 6 / 11 dB.
+- **Тестовый генератор** — PWM на GPIO1 для самопроверки.
+- **Делитель напряжения** — измерение до 20 В (с внешним делителем).
 
-## Features
-- Real-time signal visualization on a web browser.
-- Adjustable sample rate (1-83333 Hz) and attenuation.
-- Crosshair functionality for precise measurements.
-- Adjustable trigger level.
-- Test signal generation.
-- Reset functionality to clear settings and reload the interface.
-- Power off from the browser.
+## 🔌 Распиновка
 
-## Getting Started
+### ESP32-C3 Super Mini
 
-### Prerequisites
-- ESP32 development board.
-- [ESP-IDF](https://github.com/espressif/esp-idf) installed and configured.
-- USB cable to connect the ESP32 to your computer.
-- A web browser (e.g., Chrome, Firefox).
+| Пин | Назначение | Описание |
+|---|---|---|
+| **GPIO0** | ADC вход | Сигнал через делитель напряжения |
+| **GPIO1** | Тестовый PWM | Генератор прямоугольного сигнала |
+| **GPIO8** | Статусный LED | Индикация работы |
+| **GPIO9** | Кнопка BOOT | Сброс / вход в bootloader |
+| **3V3** | Питание 3.3 В | |
+| **5V** | Питание 5 В | От USB |
+| **GND** | Земля | Общий провод |
 
-### Downloading the Project
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/MatAtBread/esp-scope.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd esp-scope
-   ```
+### Делитель напряжения (до 20 В)
 
-### Building and Flashing
+```
+Вход +20В ──[ R1 = 10 кОм ]──[ R1b = 4.7 кОм ]──┬──► GPIO0 (ADC)
+                                                │
+                                          [ R2 = 2.4 кОм ]
+                                                │
+GND ────────────────────────────────────────────┴──► GND
+```
 
-If you have the esp-idf VSCode extension, just click on the flame to build, flash & monitor. Use the config settings for "espScope" to specify GPIO pins for the LED & "AP-Mode" button, and if necessary a board-specific setup file (one is provided for the Seeed Studio XIAO ESP32C6 to enable the internal ceramic antenna).
+**Коэффициент деления:** `(10000 + 4700 + 2400) / 2400 ≈ 7.125`
+**Максимум входного напряжения:** ~23.5 В
 
-1. Set up the ESP-IDF environment:
-   ```bash
-   . $IDF_PATH/export.sh
-   ```
-2. Configure the project:
-   ```bash
-   idf.py menuconfig
-   ```
-3. Build the project:
-   ```bash
-   idf.py build
-   ```
-4. Flash the firmware to the ESP32:
-   ```bash
-   idf.py -p [PORT] flash
-   ```
-   Replace `[PORT]` with the serial port of your ESP32 (e.g., `/dev/ttyUSB0` or `COM3`).
-5. Monitor the serial output:
-   ```bash
-   idf.py monitor
-   ```
+## 🧰 Элементная база
 
-### Using the esp-scope
+| Компонент | Номинал | Количество | Примечание |
+|---|---|---|---|
+| **ESP32-C3 Super Mini** | — | 1 | 4 МБ Flash, без PSRAM |
+| **Резистор R1a** | 10 кОм, 0.25 Вт, 1% | 1 | Верхнее плечо делителя |
+| **Резистор R1b** | 4.7 кОм, 0.25 Вт, 1% | 1 | Последовательно с R1a |
+| **Резистор R2** | 2.4 кОм, 0.25 Вт, 1% | 1 | Нижнее плечо делителя |
+| **Конденсатор C1** | 100 нФ, керамический | 1 | (опционально) сглаживание помех |
+| **Диод D1** | BAT54S или 1N5819 | 1 | (опционально) защита ADC |
+| **Макетная плата** | — | 1 | Для сборки делителя |
+| **Провода** | — | — | Для соединений |
 
-If your DHCP server supports it (most seem to), the app sets its hostname and you can just navigate to http://esp-scope (you may have/need a default domain extension)
+## 🛠️ Сборка
 
-1. After flashing, ESP-SCOPE will start as a WiFi access point. Connect to it to access the UI.
-2. If desired, click the "WiFi" button and set your SSID & WiFi password. The device will reboot and join your network. Pressing and holding the GPIO "AP-Mode" button will erase the WiFi credentials and return to Access Point mode.
-3. Open a web browser and navigate to "http://esp-scope" (you may have/need a default domain extension).
-4. Use the web interface to:
-   - Adjust settings like sample rate, attenuation & the test signal frequency.
-   - Visualize signals in real-time.
-   - Reset the interface using the "Reset" button.
-   - Re-configure the WiFi using the "WiFi" button.
-   - Power off the device
+### 1. Установка ESP-IDF
 
-The LED indicates one of four conditions:
-* Continuously lit: waiting to attach to a wifi network or starting the wireless AP
-* Equal 1 second flash: in AP mode - connect to the "ESP-Scope" access point
-* Slow, brief flashes: connected to the WiFi SSID set in the web UI
-* Rapid, brief flashes: sending data to an active client
+```bash
+mkdir -p ~/esp
+cd ~/esp
+git clone -b v5.5 --recursive https://github.com/espressif/esp-idf.git esp-idf-v5.5
+cd esp-idf-v5.5
+./install.sh esp32c3
+. ./export.sh
+```
 
-### Attaching hardware
+### 2. Клонирование проекта
 
-The displayed signal is sampled from ADC0. The test signal is output on D1. The default GPIOs for the LED and "AP-Mode" button are 15 and 9 respectively (hard-wired on an Seeed XIAO ESP32C6 to the yellow LED and "Boot" button).
+```bash
+cd ~/esp
+git clone https://github.com/ВАШ_ЛОГИН/ESP32_OSC.git esp-scope
+cd esp-scope
+```
 
-## 3D design
+### 3. Настройка и сборка
 
-The 3D design is a two part case with space for a AA-battery (Li-poly 3.7v, which can connect directly to a Seeed XIAO ESP device) clips and holes for the USB-C connector and "ground", "signal" and "test" connections using standard 2.54mm pitch, easily cut from jumpers and soldered directly to the Seeed XIAO. The 3D design was done using Fusion 360 and printed on a Bambu Labs A1 Mini in 30 minutes.
+```bash
+idf.py set-target esp32c3
+idf.py menuconfig
+```
 
-I recommend putting the "Signal" connection in the middle, and never connecting the outer-most pins (ground and test) to avoid shorting the test signal to ground and (probably) frying the esp32. The middle (signal) pin can be connected to either of its neigbours and you'll see either the ground or the test signal.
+В `menuconfig`:
+- **Component config** → **espScope Configuration**:
+  - **LED IO Pin:** `8`
+  - **Factory Reset Pin:** `9`
+  - **Board specific init:** `board.h`
 
-![esp-scope](esp-scope-3d.jpg)
+```bash
+idf.py build
+idf.py -p /dev/ttyACM0 flash monitor
+```
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+### 4. Первый запуск
 
-## Acknowledgments
-- Built using the ESP-IDF framework by Espressif Systems.
-- Gemini 3.
+1. ESP32 создаст Wi-Fi сеть **`ESP-Scope`** (открытая).
+2. Подключитесь к ней.
+3. Откройте браузер → **`http://esp-scope`** или **`http://192.168.4.1`**.
+4. Увидите график.
+
+### 5. Самопроверка
+
+Соедините **GPIO1** и **GPIO0** перемычкой — увидите прямоугольный сигнал.
+
+## 📐 Калибровка
+
+Для корректных показаний в вольтах нужно настроить коэффициент в `main/index.js`:
+
+```javascript
+const ATTEN_TO_MAX_V = [6.77, 8.91, 12.47, 23.51];
+```
+
+Значения соответствуют:
+- **0 dB** → 6.77 В
+- **2.5 dB** → 8.91 В
+- **6 dB** → 12.47 В
+- **11 dB** → 23.51 В
+
+Коэффициент **7.125** рассчитан для делителя **10 кОм + 4.7 кОм / 2.4 кОм**.
+
+## ⚠️ Ограничения
+
+- **Максимум ~83 кГц** частота дискретизации на ESP32-C3.
+- **ADC1 (GPIO0–4)** — обязательно, ADC2 с Wi-Fi не работает.
+- **Не подавайте больше 3.3 В** на GPIO0 напрямую.
+- **Максимум 23.5 В** на входе делителя (после делителя — 3.3 В).
+
+## 📄 Лицензия
+
+Проект основан на [MatAtBread/esp-scope](https://github.com/MatAtBread/esp-scope).
+Лицензия — см. оригинальный репозиторий.
+
+## 🙏 Благодарности
+
+- **MatAtBread** — за оригинальный проект esp-scope.
+- **Espressif** — за ESP-IDF и ESP32-C3.

@@ -9,7 +9,7 @@
 // Approximate full-scale voltages for ESP32C6/ESP32 ADC attenuations
 // 0dB: ~950mV, 2.5dB: ~1250mV, 6dB: ~1750mV, 11dB: ~3100mV+ (use 3.3V)
 /** @type {number[]} */
-const ATTEN_TO_MAX_V = [0.95, 1.25, 1.75, 3.3];
+const ATTEN_TO_MAX_V = [6.77, 8.91, 12.47, 23.51];
 
 // Data buffer size
 /** @type {number} */
